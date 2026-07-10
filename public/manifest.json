@@ -1,0 +1,13 @@
+{
+  "name": "Moonlit Reverie",
+  "short_name": "Moonlit",
+  "description": "Retro diner-coffee house — menu, reservations, and digital punch card.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F7F0E4",
+  "theme_color": "#3D2314",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" }
+  ]
+}
