@@ -43,7 +43,8 @@ export default function ScanPage() {
               setActiveTable(table);
               setScannedTable(table);
               setStatus('result');
-              scanner.stop().catch(() => {});
+              // Don't call scanner.stop() here — flipping status to 'result'
+              // already triggers the effect cleanup below, which stops it.
             }
             // non-matching codes are ignored — keep scanning
           },
@@ -66,10 +67,13 @@ export default function ScanPage() {
 
     return () => {
       cancelled = true;
-      scannerRef.current
-        ?.stop()
-        .then(() => scannerRef.current?.clear())
-        .catch(() => {});
+      const activeScanner = scannerRef.current;
+      if (activeScanner && activeScanner.isScanning) {
+        activeScanner
+          .stop()
+          .then(() => activeScanner.clear())
+          .catch(() => {});
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status === 'result']);
@@ -78,7 +82,8 @@ export default function ScanPage() {
     setActiveTable(table);
     setScannedTable(table);
     setStatus('result');
-    scannerRef.current?.stop().catch(() => {});
+    // Don't call scannerRef.current?.stop() here either — same reason as
+    // above, the effect cleanup handles it once status flips to 'result'.
   }
 
   if (status === 'result' && scannedTable) {
