@@ -7,7 +7,7 @@ import { Button } from '@/components/Button';
 import { getSession, SessionUser } from '@/lib/auth';
 import { cancelReservation, getReservationsForUser } from '@/lib/reservations';
 import type { Reservation } from '@/lib/mock-data';
-import { CalendarX2, Users, Clock } from 'lucide-react';
+import { CalendarX2, Users, Clock, MapPin } from 'lucide-react';
 
 export default function MyReservationsPage() {
   const [session, setSession] = useState<SessionUser | null | undefined>(undefined);
@@ -69,6 +69,11 @@ export default function MyReservationsPage() {
               <span className="flex items-center gap-1">
                 <Users size={14} /> {r.partySize}
               </span>
+              {r.table && (
+                <span className="flex items-center gap-1">
+                  <MapPin size={14} /> Table {r.table}
+                </span>
+              )}
             </div>
             {r.notes && <p className="mt-2 text-sm text-coffee-muted">{r.notes}</p>}
             <button

@@ -7,6 +7,8 @@ import '@fontsource/ibm-plex-mono/400.css';
 import '@fontsource/ibm-plex-mono/500.css';
 import './globals.css';
 import { BottomNav } from '@/components/BottomNav';
+import { TableBanner } from '@/components/TableBanner';
+import { TableSessionProvider } from '@/lib/table-session';
 
 export const metadata: Metadata = {
   title: 'Moonlit Reverie — Diner & Coffee House',
@@ -32,8 +34,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body>
         <div className="app-shell">
-          {children}
-          <BottomNav />
+          <TableSessionProvider>
+            <TableBanner />
+            {children}
+            <BottomNav />
+          </TableSessionProvider>
         </div>
       </body>
     </html>

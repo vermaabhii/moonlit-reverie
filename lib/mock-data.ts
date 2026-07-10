@@ -155,6 +155,8 @@ export interface Reservation {
   time: string; // e.g. "19:30"
   notes?: string;
   confirmationCode: string;
+  /** Set when the reservation was made with a table already detected/selected via ?table=N. */
+  table?: number;
 }
 
 export const SEED_RESERVATIONS: Reservation[] = [

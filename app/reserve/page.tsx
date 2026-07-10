@@ -7,7 +7,8 @@ import { cn } from '@/lib/cn';
 import { getSession } from '@/lib/auth';
 import { createReservation } from '@/lib/reservations';
 import type { Reservation } from '@/lib/mock-data';
-import { CheckCircle2, Users, CalendarDays, Clock, StickyNote } from 'lucide-react';
+import { useTableSession } from '@/lib/table-session';
+import { CheckCircle2, Users, CalendarDays, Clock, StickyNote, MapPin } from 'lucide-react';
 
 const TIME_SLOTS = ['11:30', '12:00', '12:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30'];
 
@@ -19,6 +20,20 @@ export default function ReservePage() {
   const [name, setName] = useState('');
   const [notes, setNotes] = useState('');
   const [confirmed, setConfirmed] = useState<Reservation | null>(null);
+
+  // Table auto-detect: if a table was picked up from ?table=N (or set earlier this session),
+  // treat it as already selected and let the guest change or clear it instead of asking again.
+  const { table: detectedTable } = useTableSession();
+  const [tableOverride, setTableOverride] = useState<number | null>(null);
+  const [editingTable, setEditingTable] = useState(false);
+  const [tableInput, setTableInput] = useState('');
+  const effectiveTable = tableOverride ?? detectedTable;
+
+  function saveTableInput() {
+    const num = Number(tableInput);
+    setTableOverride(Number.isInteger(num) && num > 0 ? num : null);
+    setEditingTable(false);
+  }
 
   const minDate = useMemo(() => new Date().toISOString().slice(0, 10), []);
 
@@ -32,6 +47,7 @@ export default function ReservePage() {
       date,
       time,
       notes: notes.trim() || undefined,
+      table: effectiveTable ?? undefined,
     });
     setConfirmed(reservation);
   }
@@ -50,6 +66,11 @@ export default function ReservePage() {
           })}{' '}
           at {confirmed.time}
         </p>
+        {confirmed.table && (
+          <p className="mt-1 flex items-center gap-1 font-mono text-xs text-coffee-muted">
+            <MapPin size={13} /> Table {confirmed.table}
+          </p>
+        )}
         <div className="mt-6 vintage-border rounded-card bg-cream-dark px-6 py-4">
           <p className="font-mono text-xs uppercase tracking-wide text-coffee-muted">Confirmation Code</p>
           <p className="mt-1 font-mono text-2xl text-rust">{confirmed.confirmationCode}</p>
@@ -87,6 +108,45 @@ export default function ReservePage() {
 
       {step === 1 && (
         <div className="flex flex-col gap-5 px-5 pb-6">
+          {effectiveTable !== null && !editingTable && (
+            <div className="flex items-center justify-between rounded-sign border-2 border-coffee bg-mustard/40 px-3 py-2.5">
+              <span className="flex items-center gap-1.5 font-mono text-sm text-coffee">
+                <MapPin size={15} /> Table {effectiveTable} selected
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setTableInput(String(effectiveTable));
+                  setEditingTable(true);
+                }}
+                className="font-mono text-xs uppercase tracking-wide text-rust underline underline-offset-2"
+              >
+                Change
+              </button>
+            </div>
+          )}
+
+          {(effectiveTable === null || editingTable) && (
+            <label className="block">
+              <span className="mb-1.5 flex items-center gap-1.5 font-display text-sm tracking-wide text-coffee">
+                <MapPin size={16} /> Table number (optional)
+              </span>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min={1}
+                  value={tableInput}
+                  onChange={(e) => setTableInput(e.target.value)}
+                  placeholder="e.g. 5"
+                  className="vintage-border w-full rounded-sign bg-cream-dark px-3 py-2.5 font-mono text-sm"
+                />
+                <Button type="button" variant="ghost" onClick={saveTableInput}>
+                  Save
+                </Button>
+              </div>
+            </label>
+          )}
+
           <label className="block">
             <span className="mb-1.5 flex items-center gap-1.5 font-display text-sm tracking-wide text-coffee">
               <Users size={16} /> Party Size
@@ -197,6 +257,7 @@ export default function ReservePage() {
                 })}
               />
               <Row label="Time" value={time} />
+              {effectiveTable !== null && <Row label="Table" value={String(effectiveTable)} />}
               {notes && <Row label="Notes" value={notes} />}
             </dl>
           </div>

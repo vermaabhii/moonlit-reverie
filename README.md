@@ -51,6 +51,8 @@ as a standalone app (no browser chrome).
 4. If you're signed in, placing an order also adds a stamp to your punch card (`/rewards`); 8 stamps
    unlocks a free item.
 
+**Table auto-detect via URL:** any page also accepts a `?table=N` query param on load (e.g. a real table QR code would point to `https://your-domain.example?table=12`); when present it's kept in memory for the session (`lib/table-session.tsx`), shows a dismissible "You're seated at Table N" banner, and pre-fills/skips the table field in the Reserve flow.
+
 ## Demo Account
 
 | Field    | Value               |
