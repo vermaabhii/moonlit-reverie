@@ -34,13 +34,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   ];
 
   return (
-    <div className="flex h-screen w-full bg-neutral-100 text-neutral-900 font-sans">
-      <aside className="flex w-64 flex-col bg-neutral-900 text-neutral-200">
-        <div className="flex h-16 items-center px-6 border-b border-neutral-800">
+    <div className="flex flex-col md:flex-row h-screen w-full bg-neutral-100 text-neutral-900 font-sans">
+      <aside className="flex md:w-64 flex-shrink-0 flex-col bg-neutral-900 text-neutral-200">
+        <div className="flex h-16 items-center px-6 border-b border-neutral-800 shrink-0">
           <h1 className="text-lg font-bold tracking-tight text-white">Moonlit Staff</h1>
         </div>
         
-        <nav className="flex-1 space-y-1 p-4">
+        <nav className="flex-1 flex flex-row md:flex-col overflow-x-auto md:overflow-visible space-x-1 md:space-x-0 md:space-y-1 p-2 md:p-4">
           {tabs.map((tab) => {
             const isActive = pathname.startsWith(tab.href);
             return (
@@ -59,7 +59,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           })}
         </nav>
         
-        <div className="p-4 border-t border-neutral-800">
+        <div className="p-2 md:p-4 border-t border-neutral-800 shrink-0 hidden md:block">
           <Link
             href="/"
             className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-neutral-400 hover:text-white transition-colors"

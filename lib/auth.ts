@@ -17,7 +17,7 @@ export async function getSession(): Promise<SessionUser | null> {
     id: session.user.id,
     name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
     email: session.user.email || '',
-    isAdmin: session.user.user_metadata?.is_admin === true
+    isAdmin: session.user.app_metadata?.is_admin === true
   };
 }
 
@@ -40,7 +40,6 @@ export async function signUp(
     options: {
       data: {
         name,
-        is_admin: false,
       }
     }
   });
