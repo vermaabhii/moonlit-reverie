@@ -4,8 +4,8 @@ import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { getSession } from '@/lib/auth';
-import { TopBar } from '@/components/TopBar';
 import { cn } from '@/lib/cn';
+import { LayoutDashboard, Menu as MenuIcon, CalendarRange, QrCode, LogOut } from 'lucide-react';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -13,48 +13,66 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [authorized, setAuthorized] = useState(false);
 
   useEffect(() => {
-    const session = getSession();
-    if (!session || !session.isAdmin) {
-      router.replace('/login');
-    } else {
-      setAuthorized(true);
+    async function checkAuth() {
+      const session = await getSession();
+      if (!session || !session.isAdmin) {
+        router.replace('/login');
+      } else {
+        setAuthorized(true);
+      }
     }
+    checkAuth();
   }, [router]);
 
   if (!authorized) return null;
 
   const tabs = [
-    { label: 'Orders', href: '/admin/orders' },
-    { label: 'Menu', href: '/admin/menu' },
-    { label: 'Reservations', href: '/admin/reservations' },
-    { label: 'Tables', href: '/admin/tables' },
+    { label: 'Orders', href: '/admin/orders', icon: LayoutDashboard },
+    { label: 'Menu', href: '/admin/menu', icon: MenuIcon },
+    { label: 'Reservations', href: '/admin/reservations', icon: CalendarRange },
+    { label: 'Tables', href: '/admin/tables', icon: QrCode },
   ];
 
   return (
-    <div className="flex h-full flex-col bg-cream">
-      <TopBar title="Admin Panel" showBack />
-      
-      <div className="flex gap-2 overflow-x-auto border-b-2 border-coffee/10 bg-cream px-4 py-3">
-        {tabs.map((tab) => {
-          const isActive = pathname.startsWith(tab.href);
-          return (
-            <Link
-              key={tab.href}
-              href={tab.href}
-              className={cn(
-                'whitespace-nowrap rounded-sign border-2 border-coffee px-3.5 py-1.5 font-display text-sm tracking-wide',
-                isActive ? 'bg-coffee text-cream' : 'bg-cream text-coffee'
-              )}
-            >
-              {tab.label}
-            </Link>
-          );
-        })}
-      </div>
+    <div className="flex h-screen w-full bg-neutral-100 text-neutral-900 font-sans">
+      <aside className="flex w-64 flex-col bg-neutral-900 text-neutral-200">
+        <div className="flex h-16 items-center px-6 border-b border-neutral-800">
+          <h1 className="text-lg font-bold tracking-tight text-white">Moonlit Staff</h1>
+        </div>
+        
+        <nav className="flex-1 space-y-1 p-4">
+          {tabs.map((tab) => {
+            const isActive = pathname.startsWith(tab.href);
+            return (
+              <Link
+                key={tab.href}
+                href={tab.href}
+                className={cn(
+                  'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                  isActive ? 'bg-neutral-800 text-white' : 'hover:bg-neutral-800/50 hover:text-white'
+                )}
+              >
+                <tab.icon size={18} />
+                {tab.label}
+              </Link>
+            );
+          })}
+        </nav>
+        
+        <div className="p-4 border-t border-neutral-800">
+          <Link
+            href="/"
+            className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-neutral-400 hover:text-white transition-colors"
+          >
+            <LogOut size={18} />
+            Back to Cafe
+          </Link>
+        </div>
+      </aside>
 
-      <div className="flex-1 overflow-y-auto">
+      <main className="flex-1 overflow-y-auto">
         {children}
-      </div>
+      </main>
     </div>
   );
 }

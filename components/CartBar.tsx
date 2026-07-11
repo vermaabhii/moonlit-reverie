@@ -24,7 +24,7 @@ export function CartBar({ count, total }: CartBarProps) {
           <ShoppingBag size={18} />
           {count} item{count > 1 ? 's' : ''}
         </span>
-        <span className="font-mono text-sm">View Cart · ${total.toFixed(2)}</span>
+        <span className="font-mono text-sm">View Cart · ${(total ?? 0).toFixed(2)}</span>
       </Link>
     </div>
   );

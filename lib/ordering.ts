@@ -2,13 +2,12 @@
 
 import { MenuItem } from './mock-data';
 import { getMenuItems } from './storage';
+import { supabase } from './supabase';
 
 const TABLE_KEY = 'moonlit:active-table';
 const CART_KEY_PREFIX = 'moonlit:cart:table-';
 const ORDERS_KEY = 'moonlit:orders';
 
-/** Legacy prefix format ("MOONLIT:TABLE:5") — still accepted when scanned, no longer printed. */
-export const TABLE_QR_PREFIX = 'MOONLIT:TABLE:';
 export const DEMO_TABLE_COUNT = 8;
 
 const PRODUCTION_ORIGIN = 'https://moonlit-reverie.vercel.app';
@@ -38,11 +37,6 @@ export function clearActiveTable() {
 
 export function parseTableCode(decodedText: string): number | null {
   const value = decodedText.trim();
-
-  if (value.startsWith(TABLE_QR_PREFIX)) {
-    const num = Number(value.slice(TABLE_QR_PREFIX.length));
-    return Number.isInteger(num) && num > 0 ? num : null;
-  }
 
   try {
     const url = new URL(value);
@@ -111,19 +105,21 @@ export interface CartLineDetailed extends CartLine {
   lineTotal: number;
 }
 
-export function getCartDetailed(table: number): CartLineDetailed[] {
-  return getCart(table)
-    .map((line) => {
-      const items = getMenuItems();
-      const item = items.find((m) => m.id === line.itemId);
-      if (!item) return null;
-      return { ...line, item, lineTotal: item.price * line.qty };
-    })
-    .filter((l): l is CartLineDetailed => l !== null);
+export async function getCartDetailed(table: number): Promise<CartLineDetailed[]> {
+  const cart = getCart(table);
+  if (cart.length === 0) return [];
+  const items = await getMenuItems();
+  
+  return cart.map((line) => {
+    const item = items.find((m) => m.id === line.itemId);
+    if (!item) return null;
+    return { ...line, item, lineTotal: item.price * line.qty };
+  }).filter((l): l is CartLineDetailed => l !== null);
 }
 
-export function getCartTotal(table: number): number {
-  return getCartDetailed(table).reduce((sum, l) => sum + l.lineTotal, 0);
+export async function getCartTotal(table: number): Promise<number> {
+  const detailed = await getCartDetailed(table);
+  return detailed.reduce((sum, l) => sum + l.lineTotal, 0);
 }
 
 export function getCartCount(table: number): number {
@@ -146,23 +142,28 @@ export interface Order {
   createdAt: string;
 }
 
-export function getAllOrders(): Order[] {
-  if (typeof window === 'undefined') return [];
-  const raw = window.localStorage.getItem(ORDERS_KEY);
-  if (!raw) return [];
-  try {
-    return JSON.parse(raw) as Order[];
-  } catch {
-    return [];
-  }
+export async function getAllOrders(): Promise<Order[]> {
+  const { data, error } = await supabase.from('orders').select('*');
+  if (error || !data) return [];
+  return data.map(d => ({
+    id: d.id,
+    orderNumber: d.order_number,
+    table: d.table,
+    userId: d.user_id,
+    lines: d.lines.map((l: any) => ({ ...l, price: Number(l.price) })),
+    notes: d.notes,
+    total: Number(d.total),
+    status: d.status as OrderStatus,
+    createdAt: d.created_at
+  }));
 }
 
-export function writeOrders(orders: Order[]) {
-  window.localStorage.setItem(ORDERS_KEY, JSON.stringify(orders));
-}
+// writeOrders is no longer needed publicly as we insert/update directly
+// but we keep it here just in case, or we can remove it.
+// I will just remove writeOrders and export async placeOrder.
 
-export function placeOrder(table: number, userId: string, notes?: string): Order | null {
-  const lines = getCartDetailed(table);
+export async function placeOrder(table: number, userId: string, notes?: string): Promise<Order | null> {
+  const lines = await getCartDetailed(table);
   if (lines.length === 0) return null;
   const order: Order = {
     id: `order-${Date.now()}`,
@@ -175,23 +176,33 @@ export function placeOrder(table: number, userId: string, notes?: string): Order
     status: 'sent',
     createdAt: new Date().toISOString(),
   };
-  writeOrders([...getAllOrders(), order]);
+  await supabase.from('orders').insert({
+    id: order.id,
+    order_number: order.orderNumber,
+    table: order.table,
+    user_id: order.userId,
+    lines: order.lines,
+    notes: order.notes,
+    total: order.total,
+    status: order.status,
+    created_at: order.createdAt
+  });
   clearCart(table);
   return order;
 }
 
-export function getOrder(id: string): Order | null {
-  return getAllOrders().find((o) => o.id === id) ?? null;
+export async function getOrder(id: string): Promise<Order | null> {
+  const orders = await getAllOrders();
+  return orders.find((o) => o.id === id) ?? null;
 }
 
-export function getOrdersForTable(table: number): Order[] {
-  return getAllOrders()
+export async function getOrdersForTable(table: number): Promise<Order[]> {
+  const orders = await getAllOrders();
+  return orders
     .filter((o) => o.table === table)
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
-export function updateOrderStatus(id: string, status: OrderStatus) {
-  const all = getAllOrders();
-  const next = all.map(o => o.id === id ? { ...o, status } : o);
-  writeOrders(next);
+export async function updateOrderStatus(id: string, status: OrderStatus): Promise<void> {
+  await supabase.from('orders').update({ status }).eq('id', id);
 }

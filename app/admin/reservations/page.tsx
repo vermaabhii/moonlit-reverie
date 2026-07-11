@@ -7,73 +7,103 @@ import { cn } from '@/lib/cn';
 
 export default function AdminReservationsPage() {
   const [reservations, setReservations] = useState<Reservation[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setReservations(getAllReservations());
+    loadReservations();
   }, []);
 
-  function handleStatusChange(id: string, status: 'pending' | 'confirmed' | 'cancelled') {
-    updateReservation(id, { status });
-    setReservations(getAllReservations());
+  async function loadReservations() {
+    setLoading(true);
+    setReservations(await getAllReservations());
+    setLoading(false);
+  }
+
+  async function handleStatusChange(id: string, status: 'pending' | 'confirmed' | 'cancelled') {
+    await updateReservation(id, { status });
+    await loadReservations();
   }
 
   return (
-    <div className="p-5">
-      <h2 className="mb-4 font-display text-xl text-coffee">Reservations</h2>
-      <div className="flex flex-col gap-3">
-        {reservations.map(res => {
-          const isCancelled = res.status === 'cancelled';
-          const isConfirmed = res.status === 'confirmed';
-          return (
-            <div key={res.id} className={cn("rounded-card border-2 border-coffee/10 p-4", isCancelled ? "bg-black/5 opacity-70" : "bg-white")}>
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="font-display text-lg text-coffee">{res.name}</p>
-                  <p className="text-sm text-coffee-muted">Code: {res.confirmationCode}</p>
-                  <p className="mt-2 font-mono text-xs text-coffee">
-                    {res.date} at {res.time} &bull; Party of {res.partySize}
-                    {res.table && ` \u2022 Table ${res.table}`}
-                  </p>
+    <div className="p-8">
+      <h2 className="mb-6 text-2xl font-bold tracking-tight text-neutral-900">Reservations</h2>
+      
+      {loading ? (
+        <div className="flex h-32 items-center justify-center rounded-lg border border-neutral-200 border-dashed">
+          <span className="text-sm text-neutral-500">Loading reservations...</span>
+        </div>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {reservations.map(res => {
+            const isCancelled = res.status === 'cancelled';
+            const isConfirmed = res.status === 'confirmed';
+            return (
+              <div key={res.id} className={cn("flex flex-col rounded-lg border border-neutral-200 bg-white shadow-sm overflow-hidden", isCancelled && "opacity-75 bg-neutral-50")}>
+                <div className="bg-neutral-50 px-4 py-3 border-b border-neutral-200 flex items-center justify-between">
+                  <div>
+                    <h3 className="font-bold text-neutral-900">{res.name}</h3>
+                    <p className="text-xs text-neutral-500 font-mono mt-0.5">Code: {res.confirmationCode}</p>
+                  </div>
+                  <div className="flex flex-col items-end gap-1">
+                    {isConfirmed && (
+                      <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
+                        Confirmed
+                      </span>
+                    )}
+                    {isCancelled && (
+                      <span className="inline-flex items-center rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-800">
+                        Cancelled
+                      </span>
+                    )}
+                    {!isConfirmed && !isCancelled && (
+                      <span className="inline-flex items-center rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-medium text-yellow-800">
+                        Pending
+                      </span>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="flex-1 p-4 space-y-3">
+                  <div className="text-sm text-neutral-700">
+                    <p><strong>Date:</strong> {res.date} at {res.time}</p>
+                    <p><strong>Party Size:</strong> {res.partySize}</p>
+                    {res.table && <p><strong>Assigned Table:</strong> {res.table}</p>}
+                  </div>
                   {res.notes && (
-                    <p className="mt-1 text-sm italic text-coffee-muted">"{res.notes}"</p>
+                    <div className="mt-2 rounded-md bg-yellow-50 p-3 text-sm italic text-yellow-800">
+                      "{res.notes}"
+                    </div>
                   )}
                 </div>
-                <div className="flex flex-col gap-2">
+
+                <div className="bg-neutral-50 px-4 py-3 border-t border-neutral-200 flex justify-end gap-2">
                   {!isConfirmed && !isCancelled && (
                     <button 
                       onClick={() => handleStatusChange(res.id, 'confirmed')}
-                      className="rounded-sign bg-coffee px-3 py-1 text-xs text-cream"
+                      className="rounded-md bg-neutral-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-neutral-800"
                     >
                       Confirm
                     </button>
                   )}
-                  {isConfirmed && (
-                    <span className="rounded-sign bg-green-900/10 px-3 py-1 text-center text-xs text-green-900">
-                      Confirmed
-                    </span>
-                  )}
                   {!isCancelled && (
                     <button 
                       onClick={() => handleStatusChange(res.id, 'cancelled')}
-                      className="rounded-sign bg-rust/10 px-3 py-1 text-xs text-rust-dark"
+                      className="rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
                     >
                       Cancel
                     </button>
                   )}
-                  {isCancelled && (
-                    <span className="rounded-sign bg-rust/10 px-3 py-1 text-center text-xs text-rust-dark">
-                      Cancelled
-                    </span>
-                  )}
                 </div>
               </div>
+            );
+          })}
+          {reservations.length === 0 && (
+            <div className="col-span-full rounded-lg border-2 border-dashed border-neutral-300 p-12 text-center">
+              <h3 className="mt-2 text-sm font-semibold text-neutral-900">No reservations</h3>
             </div>
-          );
-        })}
-        {reservations.length === 0 && (
-          <p className="text-coffee-muted text-sm text-center">No reservations found.</p>
-        )}
-      </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -14,14 +14,21 @@ export default function MyReservationsPage() {
   const [reservations, setReservations] = useState<Reservation[]>([]);
 
   useEffect(() => {
-    const s = getSession();
-    setSession(s);
-    if (s) setReservations(getReservationsForUser(s.id));
+    async function init() {
+      const s = await getSession();
+      setSession(s);
+      if (s) {
+        getReservationsForUser(s.id).then(setReservations);
+      }
+    }
+    init();
   }, []);
 
-  function handleCancel(id: string) {
-    cancelReservation(id);
-    if (session) setReservations(getReservationsForUser(session.id));
+  async function handleCancel(id: string) {
+    await cancelReservation(id);
+    if (session) {
+      setReservations(await getReservationsForUser(session.id));
+    }
   }
 
   if (session === undefined) return null;

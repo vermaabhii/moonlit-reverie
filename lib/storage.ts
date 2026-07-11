@@ -1,41 +1,60 @@
 'use client';
 
 import { MenuItem, MENU_ITEMS } from './mock-data';
+import { supabase } from './supabase';
 
-const MENU_KEY = 'moonlit:menu';
-
-export function getMenuItems(): MenuItem[] {
-  if (typeof window === 'undefined') return [];
-  const raw = window.localStorage.getItem(MENU_KEY);
-  if (!raw) {
-    // Seed with mock data
+export async function getMenuItems(): Promise<MenuItem[]> {
+  const { data, error } = await supabase.from('menu_items').select('*');
+  if (error || !data || data.length === 0) {
+    // If empty, seed it
     const seeded = MENU_ITEMS.map(item => ({ ...item, isAvailable: item.isAvailable !== false }));
-    window.localStorage.setItem(MENU_KEY, JSON.stringify(seeded));
+    for (const item of seeded) {
+      await supabase.from('menu_items').insert({
+        id: item.id,
+        name: item.name,
+        description: item.description,
+        price: item.price,
+        category: item.category,
+        tag: item.tag,
+        is_available: item.isAvailable
+      });
+    }
     return seeded;
   }
-  try {
-    return JSON.parse(raw) as MenuItem[];
-  } catch {
-    return MENU_ITEMS;
-  }
+  return data.map(d => ({
+    id: d.id,
+    name: d.name,
+    description: d.description || '',
+    price: Number(d.price),
+    category: d.category as any,
+    tag: d.tag,
+    isAvailable: d.is_available
+  }));
 }
 
-export function saveMenuItems(items: MenuItem[]) {
-  window.localStorage.setItem(MENU_KEY, JSON.stringify(items));
+export async function addMenuItem(item: MenuItem): Promise<void> {
+  await supabase.from('menu_items').insert({
+    id: item.id,
+    name: item.name,
+    description: item.description,
+    price: item.price,
+    category: item.category,
+    tag: item.tag,
+    is_available: item.isAvailable !== false
+  });
 }
 
-export function addMenuItem(item: MenuItem) {
-  const items = getMenuItems();
-  saveMenuItems([...items, item]);
+export async function updateMenuItem(item: MenuItem): Promise<void> {
+  await supabase.from('menu_items').update({
+    name: item.name,
+    description: item.description,
+    price: item.price,
+    category: item.category,
+    tag: item.tag,
+    is_available: item.isAvailable !== false
+  }).eq('id', item.id);
 }
 
-export function updateMenuItem(item: MenuItem) {
-  const items = getMenuItems();
-  const next = items.map((i) => (i.id === item.id ? item : i));
-  saveMenuItems(next);
-}
-
-export function deleteMenuItem(id: string) {
-  const items = getMenuItems();
-  saveMenuItems(items.filter((i) => i.id !== id));
+export async function deleteMenuItem(id: string): Promise<void> {
+  await supabase.from('menu_items').delete().eq('id', id);
 }

@@ -1,9 +1,6 @@
 'use client';
 
-import { DEMO_USER, DEMO_ADMIN } from './mock-data';
-
-const SESSION_KEY = 'moonlit:session';
-const USERS_KEY = 'moonlit:users';
+import { supabase } from './supabase';
 
 export interface SessionUser {
   id: string;
@@ -12,82 +9,47 @@ export interface SessionUser {
   isAdmin?: boolean;
 }
 
-interface StoredCredential {
-  id: string;
-  name: string;
-  email: string;
-  password: string;
-  isAdmin?: boolean;
+export async function getSession(): Promise<SessionUser | null> {
+  const { data: { session }, error } = await supabase.auth.getSession();
+  if (error || !session) return null;
+
+  return {
+    id: session.user.id,
+    name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
+    email: session.user.email || '',
+    isAdmin: session.user.user_metadata?.is_admin === true
+  };
 }
 
-function readUsers(): StoredCredential[] {
-  if (typeof window === 'undefined') return [];
-  const raw = window.localStorage.getItem(USERS_KEY);
-  if (!raw) {
-    const seeded = [DEMO_USER, DEMO_ADMIN];
-    window.localStorage.setItem(USERS_KEY, JSON.stringify(seeded));
-    return seeded;
+export async function signIn(email: string, password: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) {
+    return { ok: false, error: error.message };
   }
-  try {
-    return JSON.parse(raw) as StoredCredential[];
-  } catch {
-    return [DEMO_USER, DEMO_ADMIN];
-  }
-}
-
-function writeUsers(users: StoredCredential[]) {
-  window.localStorage.setItem(USERS_KEY, JSON.stringify(users));
-}
-
-export function getSession(): SessionUser | null {
-  if (typeof window === 'undefined') return null;
-  const raw = window.localStorage.getItem(SESSION_KEY);
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw) as SessionUser;
-  } catch {
-    return null;
-  }
-}
-
-export function signIn(email: string, password: string): { ok: true } | { ok: false; error: string } {
-  const users = readUsers();
-  const match = users.find(
-    (u) => u.email.toLowerCase() === email.trim().toLowerCase() && u.password === password
-  );
-  if (!match) {
-    return { ok: false, error: 'That email and password combination doesn\u2019t match our records.' };
-  }
-  const session: SessionUser = { id: match.id, name: match.name, email: match.email, isAdmin: match.isAdmin };
-  window.localStorage.setItem(SESSION_KEY, JSON.stringify(session));
   return { ok: true };
 }
 
-export function signUp(
+export async function signUp(
   name: string,
   email: string,
   password: string
-): { ok: true } | { ok: false; error: string } {
-  const users = readUsers();
-  if (users.some((u) => u.email.toLowerCase() === email.trim().toLowerCase())) {
-    return { ok: false, error: 'An account with that email already exists.' };
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      data: {
+        name,
+        is_admin: false,
+      }
+    }
+  });
+  if (error) {
+    return { ok: false, error: error.message };
   }
-  const id = `user-${Date.now()}`;
-  const newUser: StoredCredential = { id, name: name.trim(), email: email.trim(), password };
-  writeUsers([...users, newUser]);
-  const session: SessionUser = { id, name: newUser.name, email: newUser.email };
-  window.localStorage.setItem(SESSION_KEY, JSON.stringify(session));
   return { ok: true };
 }
 
-export function signOut() {
-  window.localStorage.removeItem(SESSION_KEY);
-}
-
-export function fillDemoCredentials(): { email: string; password: string } {
-  return { email: DEMO_USER.email, password: DEMO_USER.password };
-}
-
-export function fillAdminDemoCredentials(): { email: string; password: string } {
-  return { email: DEMO_ADMIN.email, password: DEMO_ADMIN.password };
+export async function signOut() {
+  await supabase.auth.signOut();
 }

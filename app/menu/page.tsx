@@ -22,22 +22,29 @@ export default function MenuPage() {
   const [active, setActive] = useState<MenuCategory | 'all'>('all');
   const [table, setTable] = useState<number | null | undefined>(undefined);
   const [qtyByItem, setQtyByItem] = useState<Record<string, number>>({});
+  const [total, setTotal] = useState(0);
 
   const [items, setItems] = useState<MenuItem[]>([]);
 
   useEffect(() => {
-    setItems(getMenuItems().filter(item => item.isAvailable !== false));
+    async function load() {
+      const fetched = await getMenuItems();
+      setItems(fetched.filter(item => item.isAvailable !== false));
+    }
+    load();
     const t = getActiveTable();
     setTable(t);
     if (t) refreshCart(t);
   }, []);
 
-  function refreshCart(t: number) {
+  async function refreshCart(t: number) {
     const lines = getCart(t);
     setQtyByItem(Object.fromEntries(lines.map((l) => [l.itemId, l.qty])));
+    const tot = await getCartTotal(t);
+    setTotal(tot);
   }
 
-  function handleAdd(itemId: string) {
+  async function handleAdd(itemId: string) {
     if (!table) return;
     addToCart(table, itemId, 1);
     refreshCart(table);
@@ -51,7 +58,6 @@ export default function MenuPage() {
 
   const displayItems = active === 'all' ? items : items.filter((i) => i.category === active);
   const count = table ? getCartCount(table) : 0;
-  const total = table ? getCartTotal(table) : 0;
 
   return (
     <main className="screen-scroll">

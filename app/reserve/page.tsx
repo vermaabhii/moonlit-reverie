@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { TopBar } from '@/components/TopBar';
 import { Button } from '@/components/Button';
 import { cn } from '@/lib/cn';
@@ -20,6 +20,14 @@ export default function ReservePage() {
   const [name, setName] = useState('');
   const [notes, setNotes] = useState('');
   const [confirmed, setConfirmed] = useState<Reservation | null>(null);
+  const [session, setSession] = useState<any>(null);
+
+  useEffect(() => {
+    async function init() {
+      setSession(await getSession());
+    }
+    init();
+  }, []);
 
   // Table auto-detect: if a table was picked up from ?table=N (or set earlier this session),
   // treat it as already selected and let the guest change or clear it instead of asking again.
@@ -37,11 +45,10 @@ export default function ReservePage() {
 
   const minDate = useMemo(() => new Date().toISOString().slice(0, 10), []);
 
-  function handleConfirm() {
-    const session = getSession();
+  async function handleConfirm() {
     const userId = session?.id ?? `guest-${Date.now()}`;
-    const reservation = createReservation({
-      userId,
+    const reservation = await createReservation({
+      userId: session?.id ?? userId,
       name: name.trim() || session?.name || 'Guest',
       partySize,
       date,
@@ -75,7 +82,7 @@ export default function ReservePage() {
           <p className="font-mono text-xs uppercase tracking-wide text-coffee-muted">Confirmation Code</p>
           <p className="mt-1 font-mono text-2xl text-rust">{confirmed.confirmationCode}</p>
         </div>
-        {!getSession() && (
+        {!session && (
           <p className="mt-4 max-w-xs text-xs text-coffee-muted">
             Booked as a guest — sign in with a matching account to see this in My Reservations.
           </p>

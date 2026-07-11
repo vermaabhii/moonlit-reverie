@@ -5,8 +5,8 @@ import Link from 'next/link';
 import { TopBar } from '@/components/TopBar';
 import { Button } from '@/components/Button';
 import { cn } from '@/lib/cn';
-import { fillDemoCredentials, fillAdminDemoCredentials, getSession, signIn, signOut, signUp, SessionUser } from '@/lib/auth';
-import { CalendarClock, QrCode, LogOut, Sparkles } from 'lucide-react';
+import { getSession, signIn, signOut, signUp, SessionUser } from '@/lib/auth';
+import { CalendarClock, QrCode, LogOut } from 'lucide-react';
 
 type Mode = 'signin' | 'signup';
 
@@ -18,37 +18,38 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    setSession(getSession());
-    setReady(true);
+    async function init() {
+      setSession(await getSession());
+      setReady(true);
+    }
+    init();
   }, []);
 
-  function handleDemoFill() {
-    const demo = fillDemoCredentials();
-    setEmail(demo.email);
-    setPassword(demo.password);
-    setMode('signin');
-    setError(null);
-  }
-
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    const result = mode === 'signin' ? signIn(email, password) : signUp(name, email, password);
+    setLoading(true);
+    const result = mode === 'signin' ? await signIn(email, password) : await signUp(name, email, password);
     if (!result.ok) {
       setError(result.error);
+      setLoading(false);
       return;
     }
-    setSession(getSession());
+    setSession(await getSession());
+    setLoading(false);
   }
 
-  function handleSignOut() {
-    signOut();
+  async function handleSignOut() {
+    setLoading(true);
+    await signOut();
     setSession(null);
     setEmail('');
     setPassword('');
     setName('');
+    setLoading(false);
   }
 
   if (!ready) return null;
@@ -62,6 +63,11 @@ export default function LoginPage() {
             <p className="font-mono text-xs uppercase tracking-wide text-coffee-muted">Signed in as</p>
             <p className="mt-1 font-display text-2xl tracking-wide text-coffee">{session.name}</p>
             <p className="text-sm text-coffee-muted">{session.email}</p>
+            {session.isAdmin && (
+              <Link href="/admin/orders" className="mt-3 inline-block rounded-sign bg-coffee px-3 py-1 text-xs text-cream hover:bg-coffee/90">
+                Go to Admin Dashboard
+              </Link>
+            )}
           </div>
 
           <div className="mt-5 flex flex-col gap-3">
@@ -85,8 +91,8 @@ export default function LoginPage() {
             </Link>
           </div>
 
-          <Button variant="ghost" onClick={handleSignOut} className="mt-8 w-full">
-            <LogOut size={16} /> Sign Out
+          <Button variant="ghost" onClick={handleSignOut} disabled={loading} className="mt-8 w-full">
+            <LogOut size={16} /> {loading ? 'Signing out...' : 'Sign Out'}
           </Button>
         </div>
       </main>
@@ -154,31 +160,10 @@ export default function LoginPage() {
 
           {error && <p className="rounded-sign bg-rust/10 px-3 py-2 text-sm text-rust-dark">{error}</p>}
 
-          <Button type="submit" size="lg" className="w-full">
-            {mode === 'signin' ? 'Sign In' : 'Create Account'}
+          <Button type="submit" size="lg" disabled={loading} className="w-full">
+            {loading ? 'Processing...' : (mode === 'signin' ? 'Sign In' : 'Create Account')}
           </Button>
         </form>
-
-        <div className="mt-5 flex flex-col gap-2">
-          <button
-            onClick={handleDemoFill}
-            className="flex w-full items-center justify-center gap-1.5 font-mono text-xs text-coffee-muted underline underline-offset-2"
-          >
-            <Sparkles size={14} /> Fill demo account
-          </button>
-          <button
-            onClick={() => {
-              const demo = fillAdminDemoCredentials();
-              setEmail(demo.email);
-              setPassword(demo.password);
-              setMode('signin');
-              setError(null);
-            }}
-            className="flex w-full items-center justify-center gap-1.5 font-mono text-xs text-coffee-muted underline underline-offset-2"
-          >
-            <Sparkles size={14} /> Fill admin demo
-          </button>
-        </div>
       </div>
     </main>
   );

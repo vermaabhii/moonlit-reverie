@@ -18,9 +18,12 @@ export default function RewardsPage() {
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    const s = getSession();
-    setSession(s);
-    if (s) setCard(getStampCard(s.id));
+    async function init() {
+      const s = await getSession();
+      setSession(s);
+      if (s) setCard(getStampCard(s.id));
+    }
+    init();
   }, []);
 
   useEffect(() => {

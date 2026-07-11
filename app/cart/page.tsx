@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { TopBar } from '@/components/TopBar';
 import { Button } from '@/components/Button';
-import { getSession } from '@/lib/auth';
+import { getSession, SessionUser } from '@/lib/auth';
 import {
   CartLineDetailed,
   getActiveTable,
@@ -22,24 +22,30 @@ export default function CartPage() {
   const [notes, setNotes] = useState('');
   const [placedOrder, setPlacedOrder] = useState<Order | null>(null);
   const [rewardEarned, setRewardEarned] = useState(false);
+  const [session, setSession] = useState<SessionUser | null>(null);
 
   useEffect(() => {
+    async function init() {
+      setSession(await getSession());
+    }
+    init();
     const t = getActiveTable();
     setTable(t);
-    if (t) setLines(getCartDetailed(t));
+    if (t) {
+      getCartDetailed(t).then(setLines);
+    }
   }, []);
 
-  function updateQty(itemId: string, qty: number) {
+  async function handleChangeQty(itemId: string, qty: number) {
     if (!table) return;
     setLineQty(table, itemId, qty);
-    setLines(getCartDetailed(table));
+    setLines(await getCartDetailed(table));
   }
 
-  function handlePlaceOrder() {
+  async function handlePlaceOrder() {
     if (!table) return;
-    const session = getSession();
     const userId = session?.id ?? `guest-table-${table}`;
-    const order = placeOrder(table, userId, notes.trim() || undefined);
+    const order = await placeOrder(table, userId, notes.trim() || undefined);
     if (!order) return;
     if (session) {
       const { rewardEarned } = addStampForOrder(session.id);
@@ -67,7 +73,7 @@ export default function CartPage() {
             🎉 That completed your punch card — a free item is on your account.
           </p>
         )}
-        {!getSession() && (
+        {!session && (
           <p className="mt-4 max-w-xs text-xs text-coffee-muted">
             Sign in next time to start earning stamps toward a free item.
           </p>
@@ -121,7 +127,7 @@ export default function CartPage() {
                 </div>
                 <div className="flex shrink-0 items-center gap-1.5 rounded-sign border-2 border-coffee bg-cream px-1">
                   <button
-                    onClick={() => updateQty(line.itemId, line.qty - 1)}
+                    onClick={() => handleChangeQty(line.itemId, line.qty - 1)}
                     aria-label={`Remove one ${line.item.name}`}
                     className="flex h-8 w-8 items-center justify-center text-coffee"
                   >
@@ -129,7 +135,7 @@ export default function CartPage() {
                   </button>
                   <span className="w-4 text-center font-mono text-sm">{line.qty}</span>
                   <button
-                    onClick={() => updateQty(line.itemId, line.qty + 1)}
+                    onClick={() => handleChangeQty(line.itemId, line.qty + 1)}
                     aria-label={`Add one more ${line.item.name}`}
                     className="flex h-8 w-8 items-center justify-center text-coffee"
                   >
@@ -155,7 +161,7 @@ export default function CartPage() {
 
           <div className="flex items-center justify-between border-t-2 border-coffee/10 pt-3">
             <span className="font-display text-lg tracking-wide text-coffee">Total</span>
-            <span className="font-mono text-xl text-rust">${total.toFixed(2)}</span>
+            <span className="font-mono text-xl text-rust">${(total ?? 0).toFixed(2)}</span>
           </div>
 
           <Button size="lg" onClick={handlePlaceOrder} className="w-full">
