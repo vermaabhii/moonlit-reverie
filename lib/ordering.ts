@@ -6,8 +6,18 @@ const TABLE_KEY = 'moonlit:active-table';
 const CART_KEY_PREFIX = 'moonlit:cart:table-';
 const ORDERS_KEY = 'moonlit:orders';
 
+/** Legacy prefix format ("MOONLIT:TABLE:5") — still accepted when scanned, no longer printed. */
 export const TABLE_QR_PREFIX = 'MOONLIT:TABLE:';
 export const DEMO_TABLE_COUNT = 8;
+
+const PRODUCTION_ORIGIN = 'https://moonlit-reverie.vercel.app';
+
+function siteOrigin(): string {
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    return window.location.origin;
+  }
+  return PRODUCTION_ORIGIN;
+}
 
 // ---------- Table session ----------
 
@@ -25,16 +35,26 @@ export function clearActiveTable() {
   window.localStorage.removeItem(TABLE_KEY);
 }
 
-/** Parses a scanned QR payload like "MOONLIT:TABLE:5" into a table number, or null if invalid. */
 export function parseTableCode(decodedText: string): number | null {
   const value = decodedText.trim();
-  if (!value.startsWith(TABLE_QR_PREFIX)) return null;
-  const num = Number(value.slice(TABLE_QR_PREFIX.length));
-  return Number.isInteger(num) && num > 0 ? num : null;
+
+  if (value.startsWith(TABLE_QR_PREFIX)) {
+    const num = Number(value.slice(TABLE_QR_PREFIX.length));
+    return Number.isInteger(num) && num > 0 ? num : null;
+  }
+
+  try {
+    const url = new URL(value);
+    const raw = url.searchParams.get('table');
+    const num = raw ? Number(raw) : NaN;
+    return Number.isInteger(num) && num > 0 ? num : null;
+  } catch {
+    return null;
+  }
 }
 
 export function tableQrValue(table: number) {
-  return `${TABLE_QR_PREFIX}${table}`;
+  return `${siteOrigin()}/menu?table=${table}`;
 }
 
 // ---------- Cart ----------

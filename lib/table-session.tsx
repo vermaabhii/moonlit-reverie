@@ -1,24 +1,17 @@
 'use client';
 
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
+import { setActiveTable } from './ordering';
 
 interface TableSessionValue {
-  /** The detected/selected table number for this browser session, or null if none. */
   table: number | null;
-  /** Manually set (or clear, with null) the active table — e.g. from the Reserve flow's "Change" option. */
   setTable: (table: number | null) => void;
-  /** Whether the "You're seated at Table N" banner has been dismissed by the user. */
   bannerDismissed: boolean;
   dismissBanner: () => void;
 }
 
 const TableSessionContext = createContext<TableSessionValue | undefined>(undefined);
 
-/**
- * Reads an optional `?table=N` query param once on initial page load and keeps it in memory
- * for the rest of the browser session (it intentionally does NOT persist across a hard reload
- * or browser restart — that's the point of a "you just scanned the table's QR code" signal).
- */
 export function TableSessionProvider({ children }: { children: ReactNode }) {
   const [table, setTableState] = useState<number | null>(null);
   const [bannerDismissed, setBannerDismissed] = useState(false);
@@ -31,12 +24,14 @@ export function TableSessionProvider({ children }: { children: ReactNode }) {
     if (Number.isInteger(num) && num > 0) {
       setTableState(num);
       setBannerDismissed(false);
+      setActiveTable(num);
     }
   }, []);
 
   const setTable = useCallback((next: number | null) => {
     setTableState(next);
     setBannerDismissed(false);
+    if (next !== null) setActiveTable(next);
   }, []);
 
   const dismissBanner = useCallback(() => setBannerDismissed(true), []);
