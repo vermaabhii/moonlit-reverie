@@ -12,6 +12,7 @@ export default function AdminMenuPage() {
   const [editForm, setEditForm] = useState<Partial<MenuItem>>({});
   const [isAdding, setIsAdding] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     loadItems();
@@ -19,30 +20,40 @@ export default function AdminMenuPage() {
 
   async function loadItems() {
     setLoading(true);
-    setItems(await getMenuItems());
-    setLoading(false);
+    try {
+      setItems(await getMenuItems());
+    } catch {
+      setError('Could not load menu items. Please refresh and try again.');
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function handleSave() {
-    if (isAdding) {
-      const newItem: MenuItem = {
-        id: `item-${Date.now()}`,
-        name: editForm.name || 'New Item',
-        description: editForm.description || '',
-        price: editForm.price || 0,
-        category: (editForm.category as MenuCategory) || 'food',
-        isAvailable: editForm.isAvailable !== false,
-      };
-      await addMenuItem(newItem);
-    } else if (editingId) {
-      const currentItem = items.find(i => i.id === editingId);
-      if (currentItem) {
-        await updateMenuItem({ ...currentItem, ...editForm } as MenuItem);
+    setError(null);
+    try {
+      if (isAdding) {
+        const newItem: MenuItem = {
+          id: `item-${Date.now()}`,
+          name: editForm.name || 'New Item',
+          description: editForm.description || '',
+          price: editForm.price || 0,
+          category: (editForm.category as MenuCategory) || 'food',
+          isAvailable: editForm.isAvailable !== false,
+        };
+        await addMenuItem(newItem);
+      } else if (editingId) {
+        const currentItem = items.find(i => i.id === editingId);
+        if (currentItem) {
+          await updateMenuItem({ ...currentItem, ...editForm } as MenuItem);
+        }
       }
+      await loadItems();
+      setEditingId(null);
+      setIsAdding(false);
+    } catch {
+      setError('Could not save this menu item. Please try again.');
     }
-    await loadItems();
-    setEditingId(null);
-    setIsAdding(false);
   }
 
   function handleEdit(item: MenuItem) {
@@ -53,15 +64,25 @@ export default function AdminMenuPage() {
 
   async function handleDelete(id: string) {
     if (confirm('Are you sure you want to delete this item?')) {
-      await deleteMenuItem(id);
-      await loadItems();
+      setError(null);
+      try {
+        await deleteMenuItem(id);
+        await loadItems();
+      } catch {
+        setError('Could not delete this menu item. Please try again.');
+      }
     }
   }
 
   async function toggleAvailability(item: MenuItem) {
     const updated = { ...item, isAvailable: item.isAvailable === false ? true : false };
-    await updateMenuItem(updated);
-    await loadItems();
+    setError(null);
+    try {
+      await updateMenuItem(updated);
+      await loadItems();
+    } catch {
+      setError('Could not update availability. Please try again.');
+    }
   }
 
   return (
@@ -79,6 +100,7 @@ export default function AdminMenuPage() {
           <Plus size={16} /> Add Item
         </button>
       </div>
+      {error && <p className="mb-4 rounded-md bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
 
       {(isAdding || editingId) && (
         <div className="mb-6 rounded-lg border border-neutral-200 bg-white p-5 shadow-sm">

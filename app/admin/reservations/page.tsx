@@ -8,6 +8,7 @@ import { cn } from '@/lib/cn';
 export default function AdminReservationsPage() {
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     loadReservations();
@@ -20,13 +21,19 @@ export default function AdminReservationsPage() {
   }
 
   async function handleStatusChange(id: string, status: 'pending' | 'confirmed' | 'cancelled') {
-    await updateReservation(id, { status });
-    await loadReservations();
+    setError(null);
+    try {
+      await updateReservation(id, { status });
+      await loadReservations();
+    } catch {
+      setError('Could not update this reservation. Please try again.');
+    }
   }
 
   return (
     <div className="p-8">
       <h2 className="mb-6 text-2xl font-bold tracking-tight text-neutral-900">Reservations</h2>
+      {error && <p className="mb-4 rounded-md bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
       
       {loading ? (
         <div className="flex h-32 items-center justify-center rounded-lg border border-neutral-200 border-dashed">

@@ -7,46 +7,64 @@ import { Button } from '@/components/Button';
 import { getSession, SessionUser } from '@/lib/auth';
 import {
   CartLineDetailed,
-  getActiveTable,
   getCartDetailed,
   placeOrder,
   setLineQty,
 } from '@/lib/ordering';
+import { useTableSession } from '@/lib/table-session';
 import { addStampForOrder } from '@/lib/rewards';
 import type { Order } from '@/lib/ordering';
 import { Minus, Plus, Trash2, CheckCircle2 } from 'lucide-react';
 
 export default function CartPage() {
-  const [table, setTable] = useState<number | null | undefined>(undefined);
+  const { table } = useTableSession();
   const [lines, setLines] = useState<CartLineDetailed[]>([]);
   const [notes, setNotes] = useState('');
   const [placedOrder, setPlacedOrder] = useState<Order | null>(null);
   const [rewardEarned, setRewardEarned] = useState(false);
   const [session, setSession] = useState<SessionUser | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function init() {
       setSession(await getSession());
     }
     init();
-    const t = getActiveTable();
-    setTable(t);
-    if (t) {
-      getCartDetailed(t).then(setLines);
-    }
   }, []);
+
+  useEffect(() => {
+    if (table) {
+      getCartDetailed(table).then(setLines).catch(() => {
+        setLines([]);
+        setError('We could not load your cart. Please try again.');
+      });
+    } else {
+      setLines([]);
+    }
+  }, [table]);
 
   async function handleChangeQty(itemId: string, qty: number) {
     if (!table) return;
-    setLineQty(table, itemId, qty);
-    setLines(await getCartDetailed(table));
+    try {
+      setLineQty(table, itemId, qty);
+      setLines(await getCartDetailed(table));
+    } catch {
+      setError('We could not update your cart. Please try again.');
+    }
   }
 
   async function handlePlaceOrder() {
     if (!table) return;
-    const userId = session?.id ?? `guest-table-${table}`;
-    const order = await placeOrder(table, userId, notes.trim() || undefined);
-    if (!order) return;
+    setError(null);
+    // Guest orders have no authenticated Supabase user. Keeping this null also
+    // works with the usual UUID-based user_id database column.
+    const userId = session?.id ?? null;
+    const result = await placeOrder(table, userId, notes.trim() || undefined);
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+    const order = result.order;
     if (session) {
       const { rewardEarned } = addStampForOrder(session.id);
       setRewardEarned(rewardEarned);
@@ -163,6 +181,8 @@ export default function CartPage() {
             <span className="font-display text-lg tracking-wide text-coffee">Total</span>
             <span className="font-mono text-xl text-rust">${(total ?? 0).toFixed(2)}</span>
           </div>
+
+          {error && <p className="rounded-sign bg-rust/10 px-3 py-2 text-sm text-rust-dark">{error}</p>}
 
           <Button size="lg" onClick={handlePlaceOrder} className="w-full">
             Send Order to Table {table}

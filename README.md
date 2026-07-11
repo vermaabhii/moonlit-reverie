@@ -1,9 +1,10 @@
 # Moonlit Reverie
 
-A small, polished demo website for a fictional retro diner-coffee house. Built mobile-first, like a
+A small, polished website for a fictional retro diner-coffee house. Built mobile-first, like a
 phone app — bottom tab navigation, and QR-code table ordering: scan the code on your table, browse the
-menu, and send an order straight to the kitchen from your phone. Frontend-only, with mock data and
-localStorage for sessions, orders, reservations, and rewards.
+menu, and send an order straight to the kitchen from your phone. Supabase provides authentication and
+the shared menu, order, and reservation data; localStorage keeps the active table, cart, and rewards on
+the device.
 
 ## Tech Stack
 
@@ -67,6 +68,10 @@ npm install
 npm run dev
 ```
 
+Before accepting orders, apply the SQL files in `supabase/migrations/` to the
+connected Supabase project using the Supabase SQL Editor (or the Supabase CLI).
+This creates the `orders` and `order_items` schema required by checkout.
+
 Open [http://localhost:3000](http://localhost:3000). Camera access on `/scan` needs `localhost` or
 HTTPS — on a real phone, deploy it (Vercel, etc.) or use your browser's remote-device tools.
 
@@ -80,22 +85,23 @@ HTTPS — on a real phone, deploy it (Vercel, etc.) or use your browser's remote
 
 ## Architecture Notes
 
-- **Mock data** lives in `lib/mock-data.ts` — menu items, hours, demo user, seed reservations
-- **Auth** is localStorage-based (`lib/auth.ts`) — sign up persists new accounts, not just the demo one
-- **Ordering** (`lib/ordering.ts`) — active table session, per-table cart, and placed orders, all in
-  localStorage
-- **Reservations** (`lib/reservations.ts`) are created, listed, and cancelled from localStorage
+- **Mock data** lives in `lib/mock-data.ts` — menu examples, hours, and demo copy
+- **Auth** (`lib/auth.ts`) uses Supabase Auth
+- **Ordering** (`lib/ordering.ts`) stores the active table and per-table cart locally, while placed
+  orders and their line items are persisted to Supabase
+- **Reservations** (`lib/reservations.ts`) are persisted to Supabase
 - **Rewards** (`lib/rewards.ts`) tracks stamps per user, awarded automatically when an order is placed
 - Guest orders and reservations use a temporary ID and won't show up under My Reservations/Rewards
   unless the person is signed in
 
 ## Not Fully Wired Up (by design, it's a demo)
 
-- Orders are stored locally and shown back on the confirmation screen — there's no live kitchen display
-  or order-status updates after it's sent
+- Orders are shown in the staff dashboard and can be updated live, but there is no POS or kitchen-display
+  integration
 - **Map/location** is display-only — no embedded map or directions integration
 - No payment flow — orders are "sent to the kitchen," not charged
-- Everything lives in the browser's localStorage, so it's per-device, not synced across devices
+- Cart state and rewards are device-local; menu, orders, reservations, and accounts require a configured
+  Supabase project
 
 ## Design
 

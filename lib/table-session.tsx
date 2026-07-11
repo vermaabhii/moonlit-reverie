@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
-import { setActiveTable } from './ordering';
+import { clearActiveTable, getActiveTable, setActiveTable } from './ordering';
 
 interface TableSessionValue {
   table: number | null;
@@ -19,19 +19,29 @@ export function TableSessionProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const raw = new URLSearchParams(window.location.search).get('table');
-    if (!raw) return;
-    const num = Number(raw);
-    if (Number.isInteger(num) && num > 0) {
-      setTableState(num);
-      setBannerDismissed(false);
-      setActiveTable(num);
+    if (raw) {
+      const num = Number(raw);
+      if (Number.isInteger(num) && num > 0) {
+        setTableState(num);
+        setBannerDismissed(false);
+        setActiveTable(num);
+        return;
+      }
     }
+
+    // Keep a scanned table active after a refresh or direct visit to another
+    // customer page (for example, a saved cart link).
+    setTableState(getActiveTable());
   }, []);
 
   const setTable = useCallback((next: number | null) => {
     setTableState(next);
     setBannerDismissed(false);
-    if (next !== null) setActiveTable(next);
+    if (next !== null) {
+      setActiveTable(next);
+    } else {
+      clearActiveTable();
+    }
   }, []);
 
   const dismissBanner = useCallback(() => setBannerDismissed(true), []);

@@ -12,6 +12,7 @@ import { CalendarX2, Users, Clock, MapPin } from 'lucide-react';
 export default function MyReservationsPage() {
   const [session, setSession] = useState<SessionUser | null | undefined>(undefined);
   const [reservations, setReservations] = useState<Reservation[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function init() {
@@ -25,9 +26,14 @@ export default function MyReservationsPage() {
   }, []);
 
   async function handleCancel(id: string) {
-    await cancelReservation(id);
-    if (session) {
-      setReservations(await getReservationsForUser(session.id));
+    setError(null);
+    try {
+      await cancelReservation(id);
+      if (session) {
+        setReservations(await getReservationsForUser(session.id));
+      }
+    } catch {
+      setError('We could not cancel this reservation. Please try again.');
     }
   }
 
@@ -49,6 +55,7 @@ export default function MyReservationsPage() {
     <main className="screen-scroll">
       <TopBar title="My Reservations" />
       <div className="flex flex-col gap-3 px-5 py-5">
+        {error && <p className="rounded-sign bg-rust/10 px-3 py-2 text-sm text-rust-dark">{error}</p>}
         {reservations.length === 0 && (
           <div className="mt-8 text-center text-sm text-coffee-muted">
             No reservations yet.

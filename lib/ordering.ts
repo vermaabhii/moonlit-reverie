@@ -24,10 +24,14 @@ function siteOrigin(): string {
 export function getActiveTable(): number | null {
   if (typeof window === 'undefined') return null;
   const raw = window.localStorage.getItem(TABLE_KEY);
-  return raw ? Number(raw) : null;
+  const table = raw ? Number(raw) : NaN;
+  return Number.isInteger(table) && table > 0 ? table : null;
 }
 
 export function setActiveTable(table: number) {
+  if (!Number.isInteger(table) || table <= 0) {
+    throw new Error('A table number must be a positive whole number.');
+  }
   window.localStorage.setItem(TABLE_KEY, String(table));
 }
 
@@ -134,7 +138,7 @@ export interface Order {
   id: string;
   orderNumber: string;
   table: number;
-  userId: string;
+  userId: string | null;
   lines: { itemId: string; name: string; price: number; qty: number }[];
   notes?: string;
   total: number;
@@ -143,14 +147,14 @@ export interface Order {
 }
 
 export async function getAllOrders(): Promise<Order[]> {
-  const { data, error } = await supabase.from('orders').select('*');
+  const { data, error } = await supabase.from('orders').select('*, order_items(*)');
   if (error || !data) return [];
   return data.map(d => ({
     id: d.id,
     orderNumber: d.order_number,
     table: d.table,
-    userId: d.user_id,
-    lines: d.lines.map((l: any) => ({ ...l, price: Number(l.price) })),
+    userId: d.user_id ?? null,
+    lines: (d.order_items || []).map((l: any) => ({ itemId: l.menu_item_id, name: l.name, price: Number(l.price), qty: Number(l.qty) })),
     notes: d.notes,
     total: Number(d.total),
     status: d.status as OrderStatus,
@@ -158,37 +162,74 @@ export async function getAllOrders(): Promise<Order[]> {
   }));
 }
 
-// writeOrders is no longer needed publicly as we insert/update directly
-// but we keep it here just in case, or we can remove it.
-// I will just remove writeOrders and export async placeOrder.
+export async function placeOrder(table: number, userId: string | null, notes?: string): Promise<{ok: true, order: Order} | {ok: false, error: string}> {
+  let lines: CartLineDetailed[];
+  try {
+    lines = await getCartDetailed(table);
+  } catch {
+    return { ok: false, error: 'We could not load your cart. Please try again.' };
+  }
+  if (lines.length === 0) return { ok: false, error: 'Cart is empty' };
+  // UUIDs work with both text and UUID primary-key columns in Supabase.
+  const orderId = crypto.randomUUID();
+  const orderNumber = `T${table}-${Math.floor(1000 + Math.random() * 9000)}`;
+  const total = lines.reduce((sum, l) => sum + l.lineTotal, 0);
+  const createdAt = new Date().toISOString();
 
-export async function placeOrder(table: number, userId: string, notes?: string): Promise<Order | null> {
-  const lines = await getCartDetailed(table);
-  if (lines.length === 0) return null;
-  const order: Order = {
-    id: `order-${Date.now()}`,
-    orderNumber: `T${table}-${Math.floor(1000 + Math.random() * 9000)}`,
+  const { error: orderError } = await supabase.from('orders').insert({
+    id: orderId,
+    order_number: orderNumber,
     table,
-    userId,
-    lines: lines.map((l) => ({ itemId: l.itemId, name: l.item.name, price: l.item.price, qty: l.qty })),
+    user_id: userId,
     notes,
-    total: lines.reduce((sum, l) => sum + l.lineTotal, 0),
+    total,
     status: 'sent',
-    createdAt: new Date().toISOString(),
-  };
-  await supabase.from('orders').insert({
-    id: order.id,
-    order_number: order.orderNumber,
-    table: order.table,
-    user_id: order.userId,
-    lines: order.lines,
-    notes: order.notes,
-    total: order.total,
-    status: order.status,
-    created_at: order.createdAt
+    created_at: createdAt
   });
+
+  if (orderError) {
+    return { ok: false, error: orderError.message };
+  }
+
+  const orderItemsData = lines.map((l) => ({
+    order_id: orderId,
+    menu_item_id: l.itemId,
+    name: l.item.name,
+    price: l.item.price,
+    qty: l.qty
+  }));
+
+  const { error: itemsError } = await supabase.from('order_items').insert(orderItemsData);
+  if (itemsError) {
+    // Supabase client calls cannot span a transaction. Compensate for a failed
+    // second write so the kitchen never sees an order without its items.
+    const { error: removeItemsError } = await supabase.from('order_items').delete().eq('order_id', orderId);
+    const { error: removeOrderError } = await supabase.from('orders').delete().eq('id', orderId);
+    const rollbackFailed = removeItemsError || removeOrderError;
+    return {
+      ok: false,
+      error: rollbackFailed
+        ? 'Your order could not be completed. Please contact a staff member before trying again.'
+        : 'Your order could not be completed. Please try again.',
+    };
+  }
+
   clearCart(table);
-  return order;
+
+  return {
+    ok: true,
+    order: {
+      id: orderId,
+      orderNumber,
+      table,
+      userId,
+      lines: lines.map((l) => ({ itemId: l.itemId, name: l.item.name, price: l.item.price, qty: l.qty })),
+      notes,
+      total,
+      status: 'sent',
+      createdAt,
+    }
+  };
 }
 
 export async function getOrder(id: string): Promise<Order | null> {
@@ -204,5 +245,6 @@ export async function getOrdersForTable(table: number): Promise<Order[]> {
 }
 
 export async function updateOrderStatus(id: string, status: OrderStatus): Promise<void> {
-  await supabase.from('orders').update({ status }).eq('id', id);
+  const { error } = await supabase.from('orders').update({ status }).eq('id', id);
+  if (error) throw new Error(error.message);
 }

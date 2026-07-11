@@ -7,7 +7,8 @@ import { MenuItemCard } from '@/components/MenuItemCard';
 import { CartBar } from '@/components/CartBar';
 import { MenuCategory, MenuItem } from '@/lib/mock-data';
 import { getMenuItems } from '@/lib/storage';
-import { addToCart, getActiveTable, getCart, getCartCount, getCartTotal, setLineQty } from '@/lib/ordering';
+import { addToCart, getCart, getCartCount, getCartTotal, setLineQty } from '@/lib/ordering';
+import { useTableSession } from '@/lib/table-session';
 import { cn } from '@/lib/cn';
 import { MapPin } from 'lucide-react';
 
@@ -20,28 +21,38 @@ const CATEGORIES: { id: MenuCategory | 'all'; label: string }[] = [
 
 export default function MenuPage() {
   const [active, setActive] = useState<MenuCategory | 'all'>('all');
-  const [table, setTable] = useState<number | null | undefined>(undefined);
+  const { table } = useTableSession();
   const [qtyByItem, setQtyByItem] = useState<Record<string, number>>({});
   const [total, setTotal] = useState(0);
 
   const [items, setItems] = useState<MenuItem[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
-      const fetched = await getMenuItems();
-      setItems(fetched.filter(item => item.isAvailable !== false));
+      try {
+        const fetched = await getMenuItems();
+        setItems(fetched.filter(item => item.isAvailable !== false));
+      } catch {
+        setError('The menu is unavailable right now. Please try again shortly.');
+      }
     }
     load();
-    const t = getActiveTable();
-    setTable(t);
-    if (t) refreshCart(t);
   }, []);
 
+  useEffect(() => {
+    if (table) refreshCart(table);
+  }, [table]);
+
   async function refreshCart(t: number) {
-    const lines = getCart(t);
-    setQtyByItem(Object.fromEntries(lines.map((l) => [l.itemId, l.qty])));
-    const tot = await getCartTotal(t);
-    setTotal(tot);
+    try {
+      const lines = getCart(t);
+      setQtyByItem(Object.fromEntries(lines.map((l) => [l.itemId, l.qty])));
+      const tot = await getCartTotal(t);
+      setTotal(tot);
+    } catch {
+      setError('We could not update your cart total. Please try again.');
+    }
   }
 
   async function handleAdd(itemId: string) {
@@ -93,6 +104,7 @@ export default function MenuPage() {
         ))}
       </div>
       <div className="flex flex-col gap-3 px-5 py-4">
+        {error && <p className="rounded-sign bg-rust/10 px-3 py-2 text-sm text-rust-dark">{error}</p>}
         {displayItems.map((item) => (
           <MenuItemCard
             key={item.id}

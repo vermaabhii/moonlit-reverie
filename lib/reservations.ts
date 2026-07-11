@@ -34,7 +34,7 @@ export async function createReservation(input: Omit<Reservation, 'id' | 'confirm
     confirmationCode: `MR-${Math.floor(1000 + Math.random() * 9000)}`,
     status: 'pending'
   };
-  await supabase.from('reservations').insert({
+  const { error } = await supabase.from('reservations').insert({
     id: reservation.id,
     user_id: reservation.userId,
     name: reservation.name,
@@ -46,13 +46,16 @@ export async function createReservation(input: Omit<Reservation, 'id' | 'confirm
     table: reservation.table,
     status: reservation.status
   });
+  if (error) throw new Error(error.message);
   return reservation;
 }
 
 export async function cancelReservation(id: string): Promise<void> {
-  await supabase.from('reservations').delete().eq('id', id);
+  const { error } = await supabase.from('reservations').delete().eq('id', id);
+  if (error) throw new Error(error.message);
 }
 
 export async function updateReservation(id: string, updates: Partial<Reservation>): Promise<void> {
-  await supabase.from('reservations').update(updates).eq('id', id);
+  const { error } = await supabase.from('reservations').update(updates).eq('id', id);
+  if (error) throw new Error(error.message);
 }

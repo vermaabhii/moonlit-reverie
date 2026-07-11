@@ -9,6 +9,7 @@ export default function AdminOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     loadOrders();
@@ -38,8 +39,13 @@ export default function AdminOrdersPage() {
   }
 
   async function handleStatusChange(id: string, status: OrderStatus) {
-    await updateOrderStatus(id, status);
-    // Real-time listener will fetch the latest
+    setError(null);
+    try {
+      await updateOrderStatus(id, status);
+      // Real-time listener will fetch the latest.
+    } catch {
+      setError('Could not update this order. Please try again.');
+    }
   }
 
   const statusColors: Record<OrderStatus, string> = {
@@ -70,6 +76,7 @@ export default function AdminOrdersPage() {
           </select>
         </div>
       </div>
+      {error && <p className="mb-4 rounded-md bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
       
       {loading ? (
         <div className="flex h-32 items-center justify-center rounded-lg border border-neutral-200 border-dashed">

@@ -21,6 +21,8 @@ export default function ReservePage() {
   const [notes, setNotes] = useState('');
   const [confirmed, setConfirmed] = useState<Reservation | null>(null);
   const [session, setSession] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     async function init() {
@@ -46,17 +48,25 @@ export default function ReservePage() {
   const minDate = useMemo(() => new Date().toISOString().slice(0, 10), []);
 
   async function handleConfirm() {
-    const userId = session?.id ?? `guest-${Date.now()}`;
-    const reservation = await createReservation({
-      userId: session?.id ?? userId,
-      name: name.trim() || session?.name || 'Guest',
-      partySize,
-      date,
-      time,
-      notes: notes.trim() || undefined,
-      table: effectiveTable ?? undefined,
-    });
-    setConfirmed(reservation);
+    setError(null);
+    setIsSubmitting(true);
+    try {
+      const userId = session?.id ?? `guest-${Date.now()}`;
+      const reservation = await createReservation({
+        userId: session?.id ?? userId,
+        name: name.trim() || session?.name || 'Guest',
+        partySize,
+        date,
+        time,
+        notes: notes.trim() || undefined,
+        table: effectiveTable ?? undefined,
+      });
+      setConfirmed(reservation);
+    } catch {
+      setError('We could not save your reservation. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   if (confirmed) {
@@ -268,12 +278,13 @@ export default function ReservePage() {
               {notes && <Row label="Notes" value={notes} />}
             </dl>
           </div>
+          {error && <p className="rounded-sign bg-rust/10 px-3 py-2 text-sm text-rust-dark">{error}</p>}
           <div className="flex gap-3">
             <Button variant="ghost" onClick={() => setStep(2)} className="flex-1">
               Back
             </Button>
-            <Button onClick={handleConfirm} className="flex-1">
-              Confirm
+            <Button onClick={handleConfirm} disabled={isSubmitting} className="flex-1">
+              {isSubmitting ? 'Saving…' : 'Confirm'}
             </Button>
           </div>
         </div>
