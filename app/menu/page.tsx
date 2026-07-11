@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { TopBar } from '@/components/TopBar';
 import { MenuItemCard } from '@/components/MenuItemCard';
 import { CartBar } from '@/components/CartBar';
-import { MENU_ITEMS, MenuCategory } from '@/lib/mock-data';
+import { MenuCategory, MenuItem } from '@/lib/mock-data';
+import { getMenuItems } from '@/lib/storage';
 import { addToCart, getActiveTable, getCart, getCartCount, getCartTotal, setLineQty } from '@/lib/ordering';
 import { cn } from '@/lib/cn';
 import { MapPin } from 'lucide-react';
@@ -22,7 +23,10 @@ export default function MenuPage() {
   const [table, setTable] = useState<number | null | undefined>(undefined);
   const [qtyByItem, setQtyByItem] = useState<Record<string, number>>({});
 
+  const [items, setItems] = useState<MenuItem[]>([]);
+
   useEffect(() => {
+    setItems(getMenuItems().filter(item => item.isAvailable !== false));
     const t = getActiveTable();
     setTable(t);
     if (t) refreshCart(t);
@@ -45,7 +49,7 @@ export default function MenuPage() {
     refreshCart(table);
   }
 
-  const items = active === 'all' ? MENU_ITEMS : MENU_ITEMS.filter((i) => i.category === active);
+  const displayItems = active === 'all' ? items : items.filter((i) => i.category === active);
   const count = table ? getCartCount(table) : 0;
   const total = table ? getCartTotal(table) : 0;
 
@@ -83,7 +87,7 @@ export default function MenuPage() {
         ))}
       </div>
       <div className="flex flex-col gap-3 px-5 py-4">
-        {items.map((item) => (
+        {displayItems.map((item) => (
           <MenuItemCard
             key={item.id}
             item={item}

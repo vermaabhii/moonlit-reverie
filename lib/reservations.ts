@@ -22,6 +22,10 @@ function writeAll(reservations: Reservation[]) {
   window.localStorage.setItem(RES_KEY, JSON.stringify(reservations));
 }
 
+export function getAllReservations(): Reservation[] {
+  return readAll().sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time));
+}
+
 export function getReservationsForUser(userId: string): Reservation[] {
   return readAll()
     .filter((r) => r.userId === userId)
@@ -41,4 +45,10 @@ export function createReservation(input: Omit<Reservation, 'id' | 'confirmationC
 
 export function cancelReservation(id: string) {
   writeAll(readAll().filter((r) => r.id !== id));
+}
+
+export function updateReservation(id: string, updates: Partial<Reservation>) {
+  const all = readAll();
+  const next = all.map((r) => (r.id === id ? { ...r, ...updates } : r));
+  writeAll(next);
 }

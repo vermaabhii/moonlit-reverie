@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { TopBar } from '@/components/TopBar';
 import { Button } from '@/components/Button';
 import { cn } from '@/lib/cn';
-import { fillDemoCredentials, getSession, signIn, signOut, signUp, SessionUser } from '@/lib/auth';
+import { fillDemoCredentials, fillAdminDemoCredentials, getSession, signIn, signOut, signUp, SessionUser } from '@/lib/auth';
 import { CalendarClock, QrCode, LogOut, Sparkles } from 'lucide-react';
 
 type Mode = 'signin' | 'signup';
@@ -159,12 +159,26 @@ export default function LoginPage() {
           </Button>
         </form>
 
-        <button
-          onClick={handleDemoFill}
-          className="mt-5 flex w-full items-center justify-center gap-1.5 font-mono text-xs text-coffee-muted underline underline-offset-2"
-        >
-          <Sparkles size={14} /> Fill demo account
-        </button>
+        <div className="mt-5 flex flex-col gap-2">
+          <button
+            onClick={handleDemoFill}
+            className="flex w-full items-center justify-center gap-1.5 font-mono text-xs text-coffee-muted underline underline-offset-2"
+          >
+            <Sparkles size={14} /> Fill demo account
+          </button>
+          <button
+            onClick={() => {
+              const demo = fillAdminDemoCredentials();
+              setEmail(demo.email);
+              setPassword(demo.password);
+              setMode('signin');
+              setError(null);
+            }}
+            className="flex w-full items-center justify-center gap-1.5 font-mono text-xs text-coffee-muted underline underline-offset-2"
+          >
+            <Sparkles size={14} /> Fill admin demo
+          </button>
+        </div>
       </div>
     </main>
   );

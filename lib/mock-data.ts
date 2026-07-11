@@ -7,6 +7,7 @@ export interface MenuItem {
   price: number;
   category: MenuCategory;
   tag?: 'new' | 'staff-pick' | 'after-dark';
+  isAvailable?: boolean;
 }
 
 export const MENU_ITEMS: MenuItem[] = [
@@ -137,6 +138,7 @@ export interface DemoUser {
   name: string;
   email: string;
   password: string;
+  isAdmin?: boolean;
 }
 
 export const DEMO_USER: DemoUser = {
@@ -144,6 +146,14 @@ export const DEMO_USER: DemoUser = {
   name: 'Alex Rivera',
   email: 'alex@demo.moonlit',
   password: 'moonlit123',
+};
+
+export const DEMO_ADMIN: DemoUser = {
+  id: 'user-admin',
+  name: 'Admin User',
+  email: 'admin@demo.moonlit',
+  password: 'adminpassword',
+  isAdmin: true,
 };
 
 export interface Reservation {
@@ -157,6 +167,7 @@ export interface Reservation {
   confirmationCode: string;
   /** Set when the reservation was made with a table already detected/selected via ?table=N. */
   table?: number;
+  status?: 'pending' | 'confirmed' | 'cancelled';
 }
 
 export const SEED_RESERVATIONS: Reservation[] = [

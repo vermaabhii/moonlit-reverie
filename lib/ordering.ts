@@ -1,6 +1,7 @@
 'use client';
 
-import { MenuItem, MENU_ITEMS } from './mock-data';
+import { MenuItem } from './mock-data';
+import { getMenuItems } from './storage';
 
 const TABLE_KEY = 'moonlit:active-table';
 const CART_KEY_PREFIX = 'moonlit:cart:table-';
@@ -113,7 +114,8 @@ export interface CartLineDetailed extends CartLine {
 export function getCartDetailed(table: number): CartLineDetailed[] {
   return getCart(table)
     .map((line) => {
-      const item = MENU_ITEMS.find((m) => m.id === line.itemId);
+      const items = getMenuItems();
+      const item = items.find((m) => m.id === line.itemId);
       if (!item) return null;
       return { ...line, item, lineTotal: item.price * line.qty };
     })
