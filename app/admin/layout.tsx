@@ -24,6 +24,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   if (!authorized) return null;
 
   const tabs = [
+    { label: 'Orders', href: '/admin/orders' },
     { label: 'Menu', href: '/admin/menu' },
     { label: 'Reservations', href: '/admin/reservations' },
     { label: 'Tables', href: '/admin/tables' },

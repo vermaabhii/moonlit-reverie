@@ -146,7 +146,7 @@ export interface Order {
   createdAt: string;
 }
 
-function readOrders(): Order[] {
+export function getAllOrders(): Order[] {
   if (typeof window === 'undefined') return [];
   const raw = window.localStorage.getItem(ORDERS_KEY);
   if (!raw) return [];
@@ -157,7 +157,7 @@ function readOrders(): Order[] {
   }
 }
 
-function writeOrders(orders: Order[]) {
+export function writeOrders(orders: Order[]) {
   window.localStorage.setItem(ORDERS_KEY, JSON.stringify(orders));
 }
 
@@ -175,17 +175,23 @@ export function placeOrder(table: number, userId: string, notes?: string): Order
     status: 'sent',
     createdAt: new Date().toISOString(),
   };
-  writeOrders([...readOrders(), order]);
+  writeOrders([...getAllOrders(), order]);
   clearCart(table);
   return order;
 }
 
 export function getOrder(id: string): Order | null {
-  return readOrders().find((o) => o.id === id) ?? null;
+  return getAllOrders().find((o) => o.id === id) ?? null;
 }
 
 export function getOrdersForTable(table: number): Order[] {
-  return readOrders()
+  return getAllOrders()
     .filter((o) => o.table === table)
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
+export function updateOrderStatus(id: string, status: OrderStatus) {
+  const all = getAllOrders();
+  const next = all.map(o => o.id === id ? { ...o, status } : o);
+  writeOrders(next);
 }
